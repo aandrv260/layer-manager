@@ -1,0 +1,5 @@
+/* Base styles live in src/demo/demo.css. This file is intentionally minimal. */
+
+#root {
+  min-height: 100vh;
+}
