@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# layer-system
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A small headless engine for stacking UI overlays (modals, dialogs, toasts) on top of a single, shared layer stack.
 
-Currently, two official plugins are available:
+## The problem
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+When more than one overlay is open at a time, three things get hard to coordinate:
 
-## React Compiler
+- **Stacking order:** which overlay sits on top of which.
+- **Body scroll:** the page behind a modal should not scroll, and it must stay locked until the last modal closes (not the first).
+- **Focus:** keyboard focus should be trapped inside the topmost modal and returned to the one beneath it when that modal closes.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Handled per-component, this logic gets duplicated and drifts out of sync.
 
-## Expanding the ESLint configuration
+## What it does
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+A single `LayerManager` owns one stack and centralizes all three concerns:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Hands out an incrementing `layer-N` z-index class per open layer.
+- Reference-counts the body-scroll lock, so nested overlays release it correctly.
+- Traps Tab / Shift+Tab focus inside the active layer.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Layers can be **peripheral** (toast-like: no scroll lock, no focus trap) or normal (modal-like).
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+The core is plain TypeScript with no React or DOM-framework assumptions; the React binding is a thin layer on top.
+
+## Usage
+
+Mount one manager at the root:
+
+```tsx
+const layerManager = new LayerManager(new ConsoleLogger());
+
+<LayerProvider layerManager={layerManager}>
+  <App />
+</LayerProvider>
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then register a layer from any component with the `useLayer` hook (or use the ready-made `Dialog` and `ToastProvider` built on it):
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```tsx
+const { containerRef, layerClassName } = useLayer({ open, isPeripheral: false });
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Layout
+
+```
+src/
+  core/      LayerManager, FocusTrapper, BodyScrollManager
+  hooks/     useLayer (under ui/)
+  context/   LayerProvider, useLayerManager (under ui/)
+  ui/        Dialog, ToastProvider
+  types/     Layer, ILogger
+  utils/     focus + scroll helpers, ConsoleLogger
+```
+
+## Scripts
+
+```
+pnpm dev     # run the demo
+pnpm test    # run the test suite
+pnpm build   # typecheck + production build
 ```
