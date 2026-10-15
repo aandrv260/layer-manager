@@ -1,5 +1,6 @@
 import { useLayerManager } from "@/ui/context/useLayerManager";
 import {
+  useCallback,
   useEffect,
   useEffectEvent,
   useMemo,
@@ -54,17 +55,33 @@ export const useLayer = <T extends HTMLElement>({
       return;
     }
 
+    const previouslyFocused = isPeripheral
+      ? null
+      : (document.activeElement as HTMLElement | null);
+
     layerManager.addLayer(layer);
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLayerClassName(layerManager.getZIndexClassNameById(layer.id));
     focusLayerContainer();
 
-    return () => layerManager.popLayer(layer.id);
-  }, [open, layerManager, layer]);
+    return () => {
+      layerManager.popLayer(layer.id);
+
+      if (previouslyFocused?.isConnected) {
+        previouslyFocused.focus();
+      }
+    };
+  }, [open, layerManager, layer, isPeripheral]);
+
+  const isActive = useCallback(
+    () => layerManager.isActiveLayer(layer.id),
+    [layerManager, layer],
+  );
 
   return {
     containerRef,
     layerClassName,
+    isActive,
   };
 };
