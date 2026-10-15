@@ -19,7 +19,7 @@ interface DialogProps {
  * receiving an auto-incrementing `layer-N` z-index class.
  */
 export function Dialog({ open, onClose, title, badge, children, footer }: DialogProps) {
-  const { containerRef, layerClassName } = useLayer<HTMLDivElement>({
+  const { containerRef, layerClassName, isActive } = useLayer<HTMLDivElement>({
     open,
     isPeripheral: false,
   });
@@ -30,14 +30,14 @@ export function Dialog({ open, onClose, title, badge, children, footer }: Dialog
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && isActive()) {
         onClose();
       }
     };
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, isActive]);
 
   if (!open) {
     return null;

@@ -44,12 +44,16 @@ export class FocusTrapper {
     this.container = container;
   }
 
+  public release() {
+    this.container = null;
+  }
+
   public init() {
     document.addEventListener("keydown", this.onKeyDown);
   }
 
   public cleanup() {
-    this.container = null;
+    this.release();
     document.removeEventListener("keydown", this.onKeyDown);
   }
 }

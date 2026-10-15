@@ -101,3 +101,27 @@ test("stacks multiple layers with increasing z-index classes", () => {
   expect(screen.getByText("layer-1")).toBeInTheDocument();
   expect(screen.getByText("layer-2")).toBeInTheDocument();
 });
+
+test("returns focus to the previously focused element when the layer closes", () => {
+  const manager = new LayerManager(createSilentLogger());
+  const trigger = document.createElement("button");
+  document.body.appendChild(trigger);
+  trigger.focus();
+
+  const { rerender } = render(
+    <LayerProvider layerManager={manager}>
+      <Component open />
+    </LayerProvider>,
+  );
+
+  expect(screen.getByRole("dialog")).toHaveFocus();
+
+  rerender(
+    <LayerProvider layerManager={manager}>
+      <Component open={false} />
+    </LayerProvider>,
+  );
+
+  expect(trigger).toHaveFocus();
+  trigger.remove();
+});

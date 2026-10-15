@@ -151,6 +151,71 @@ test("init wires up focus trapping for the active layer", () => {
   expect(document.activeElement).toBe(buttons[0]);
 });
 
+const pressTab = () => {
+  const event = new KeyboardEvent("keydown", {
+    key: "Tab",
+    bubbles: true,
+    cancelable: true,
+  });
+  document.dispatchEvent(event);
+  return event;
+};
+
+test("returns the focus trap to the modal beneath when the top modal is popped", () => {
+  const a = buildLayer("a", { buttons: ["a1", "a2"] });
+  const b = buildLayer("b", { buttons: ["b1", "b2"] });
+  manager.init();
+  manager.addLayer(a.layer);
+  manager.addLayer(b.layer);
+  manager.popLayer("b");
+
+  const buttons = [...a.container.querySelectorAll("button")];
+  buttons[buttons.length - 1].focus();
+  pressTab();
+
+  expect(document.activeElement).toBe(buttons[0]);
+});
+
+test("releases the focus trap when the last modal layer is popped", () => {
+  const a = buildLayer("a");
+  const outside = document.createElement("button");
+  document.body.appendChild(outside);
+  manager.init();
+  manager.addLayer(a.layer);
+  manager.popLayer("a");
+  a.container.remove();
+
+  outside.focus();
+  const event = pressTab();
+
+  expect(event.defaultPrevented).toBe(false);
+  expect(document.activeElement).toBe(outside);
+});
+
+test("does not trap focus in a peripheral layer left on top of the stack", () => {
+  const modal = buildLayer("modal");
+  const toast = buildLayer("toast", { peripheral: true });
+  manager.init();
+  manager.addLayer(modal.layer);
+  manager.addLayer(toast.layer);
+  manager.popLayer("modal");
+
+  const event = pressTab();
+
+  expect(event.defaultPrevented).toBe(false);
+  expect(toast.container).not.toContainElement(document.activeElement as HTMLElement);
+});
+
+test("isActiveLayer is true only for the topmost non-peripheral layer", () => {
+  manager.addLayer(buildLayer("a").layer);
+  manager.addLayer(buildLayer("b").layer);
+  manager.addLayer(buildLayer("toast", { peripheral: true }).layer);
+
+  expect(manager.isActiveLayer("b")).toBe(true);
+  expect(manager.isActiveLayer("a")).toBe(false);
+  expect(manager.isActiveLayer("toast")).toBe(false);
+});
+
 test("cleanup clears the stack and restores scrolling", () => {
   manager.addLayer(buildLayer("a").layer);
   manager.cleanup();

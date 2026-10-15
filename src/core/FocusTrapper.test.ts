@@ -151,3 +151,21 @@ test("traps within the most recently trapped container", () => {
 
   expect(document.activeElement).toBe(second.buttons[0]);
 });
+
+test("stops trapping after release but keeps listening", () => {
+  const first = buildContainer(["a1", "a2"]);
+  const second = buildContainer(["b1", "b2"]);
+  trapper.trap(first.el);
+  trapper.release();
+
+  first.buttons[first.buttons.length - 1].focus();
+  const event = pressTab(false);
+
+  expect(event.defaultPrevented).toBe(false);
+
+  trapper.trap(second.el);
+  second.buttons[second.buttons.length - 1].focus();
+  pressTab(false);
+
+  expect(document.activeElement).toBe(second.buttons[0]);
+});

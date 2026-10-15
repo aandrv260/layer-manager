@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Dialog } from "@/ui/Dialog";
 import LayerProvider from "@/ui/context/LayerProvider";
 import { LayerManager } from "@/core/LayerManager";
@@ -134,4 +134,58 @@ test("renders footer content", () => {
   );
 
   expect(screen.getByText("Save")).toBeInTheDocument();
+});
+
+test("Escape closes only the topmost of nested dialogs", () => {
+  const onCloseRoot = vi.fn();
+  const onCloseNested = vi.fn();
+  renderDialog(
+    <>
+      <Dialog open onClose={onCloseRoot} title="Root">
+        <p>root</p>
+      </Dialog>
+      <Dialog open onClose={onCloseNested} title="Nested">
+        <p>nested</p>
+      </Dialog>
+    </>,
+  );
+
+  act(() => {
+    fireEvent.keyDown(document, { key: "Escape" });
+  });
+
+  expect(onCloseNested).toHaveBeenCalledTimes(1);
+  expect(onCloseRoot).not.toHaveBeenCalled();
+});
+
+test("Escape reaches the dialog beneath once the top one has closed", () => {
+  function Nested({ onCloseRoot }: { onCloseRoot: () => void }) {
+    const [nestedOpen, setNestedOpen] = useState(true);
+    return (
+      <>
+        <Dialog open onClose={onCloseRoot} title="Root">
+          <p>root</p>
+        </Dialog>
+        <Dialog open={nestedOpen} onClose={() => setNestedOpen(false)} title="Nested">
+          <p>nested</p>
+        </Dialog>
+      </>
+    );
+  }
+
+  const onCloseRoot = vi.fn();
+  renderDialog(<Nested onCloseRoot={onCloseRoot} />);
+
+  act(() => {
+    fireEvent.keyDown(document, { key: "Escape" });
+  });
+
+  expect(screen.queryByRole("dialog", { name: "Nested" })).not.toBeInTheDocument();
+  expect(onCloseRoot).not.toHaveBeenCalled();
+
+  act(() => {
+    fireEvent.keyDown(document, { key: "Escape" });
+  });
+
+  expect(onCloseRoot).toHaveBeenCalledTimes(1);
 });

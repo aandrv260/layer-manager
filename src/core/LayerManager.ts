@@ -56,15 +56,25 @@ export class LayerManager {
 
     this.layerStack = this.layerStack.filter((curLayer) => curLayer !== layer);
 
-    const newCurrentLayer = this.layerStack.at(-1);
-
     if (!layer.peripheral) {
       this.bodyScrollManager.unlock();
     }
 
-    if (newCurrentLayer) {
-      this.focusTrapper.trap(newCurrentLayer.getContainer());
+    const activeLayer = this.getActiveLayer();
+
+    if (activeLayer) {
+      this.focusTrapper.trap(activeLayer.getContainer());
+    } else {
+      this.focusTrapper.release();
     }
+  }
+
+  public isActiveLayer(id: string): boolean {
+    return this.getActiveLayer()?.id === id;
+  }
+
+  private getActiveLayer(): Layer | undefined {
+    return this.layerStack.findLast((layer) => !layer.peripheral);
   }
 
   public getZIndexClassNameById(id: string): string | null {
